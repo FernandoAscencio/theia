@@ -40,6 +40,8 @@ import { URI as vscodeURI } from '@theia/core/shared/vscode-uri';
 import { Splice } from '../../common/arrays';
 import { UriComponents } from '../../common/uri-components';
 import { ColorRegistry } from '@theia/core/lib/browser/color-registry';
+import { PluginSharedStyle } from './plugin-shared-style';
+import { IconUrl } from '../../common';
 
 export class PluginScmResourceGroup implements ScmResourceGroup {
 
@@ -147,6 +149,7 @@ export class PluginScmProvider implements ScmProvider {
     constructor(
         private readonly proxy: ScmExt,
         private readonly colors: ColorRegistry,
+        private readonly style: PluginSharedStyle,
         private readonly _handle: number,
         private readonly _contextValue: string,
         private readonly _label: string,
@@ -222,13 +225,13 @@ export class PluginScmProvider implements ScmProvider {
                 const { start, deleteCount, rawResources } = groupSlice;
                 const resources = rawResources.map(rawResource => {
                     const { handle, sourceUri, icons, tooltip, strikeThrough, faded, contextValue, command } = rawResource;
-                    const icon = icons[0];
-                    const iconDark = icons[1] || icon;
+                    const icon = this.toIconClass(icons, true);
+                    const iconDark = this.toIconClass(icons, false);
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const colorVariable = (rawResource as any).colorId && this.colors.toCssVariableName((rawResource as any).colorId);
                     const decorations = {
-                        icon: icon ? vscodeURI.revive(icon) : undefined,
-                        iconDark: iconDark ? vscodeURI.revive(iconDark) : undefined,
+                        icon,
+                        iconDark,
                         tooltip,
                         strikeThrough,
                         // TODO remove the letter and colorId fields when the FileDecorationProvider is applied, see https://github.com/eclipse-theia/theia/pull/8911
@@ -258,6 +261,12 @@ export class PluginScmProvider implements ScmProvider {
         this.onDidChangeResourcesEmitter.fire();
     }
 
+    private toIconClass(icons: IconUrl, isLightTheme: boolean): string {
+        let icon = typeof icons === 'object' ? (isLightTheme ? icons.light : icons.dark) : icons;
+        icon = icon.includes('codicon') ? icon : this.style.toIconClass(icon).object.iconClass;
+        return icon;
+    }
+
     unregisterGroup(handle: number): void {
         const group = this.groupsByHandle[handle];
 
@@ -280,11 +289,13 @@ export class ScmMainImpl implements ScmMain {
     private repositoryDisposables = new Map<number, DisposableCollection>();
     private readonly disposables = new DisposableCollection();
     private readonly colors: ColorRegistry;
+    private readonly style: PluginSharedStyle;
 
     constructor(rpc: RPCProtocol, container: interfaces.Container) {
         this.proxy = rpc.getProxy(MAIN_RPC_CONTEXT.SCM_EXT);
         this.scmService = container.get(ScmService);
         this.colors = container.get(ColorRegistry);
+        this.style = container.get(PluginSharedStyle);
     }
 
     dispose(): void {
@@ -298,7 +309,7 @@ export class ScmMainImpl implements ScmMain {
     }
 
     async $registerSourceControl(handle: number, id: string, label: string, rootUri: UriComponents | undefined): Promise<void> {
-        const provider = new PluginScmProvider(this.proxy, this.colors, handle, id, label, rootUri ? vscodeURI.revive(rootUri) : undefined);
+        const provider = new PluginScmProvider(this.proxy, this.colors, this.style, handle, id, label, rootUri ? vscodeURI.revive(rootUri) : undefined);
         const repository = this.scmService.registerScmProvider(provider, {
             input: {
                 validator: async value => {

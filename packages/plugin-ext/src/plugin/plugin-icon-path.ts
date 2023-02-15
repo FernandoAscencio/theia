@@ -18,10 +18,11 @@ import * as path from 'path';
 import { URI } from './types-impl';
 import { IconUrl, PluginPackage } from '../common/plugin-protocol';
 import { Plugin } from '../common/plugin-api-rpc';
+import { ThemeIcon } from '@theia/monaco-editor-core/esm/vs/platform/theme/common/themeService';
 
-export type PluginIconPath = string | URI | {
-    light: string | URI,
-    dark: string | URI
+export type PluginIconPath = string | URI | ThemeIcon | {
+    light: string | URI | ThemeIcon,
+    dark: string | URI | ThemeIcon
 };
 export namespace PluginIconPath {
     export function toUrl(iconPath: PluginIconPath | undefined, plugin: Plugin): IconUrl | undefined {
@@ -36,8 +37,11 @@ export namespace PluginIconPath {
         }
         return asString(iconPath, plugin);
     }
-    export function asString(arg: string | URI, plugin: Plugin): string {
+    export function asString(arg: string | URI | ThemeIcon, plugin: Plugin): string {
         arg = arg instanceof URI && arg.scheme === 'file' ? arg.fsPath : arg;
+        if (ThemeIcon.isThemeIcon(arg)) {
+            return ThemeIcon.asClassName(arg);
+        }
         if (typeof arg !== 'string') {
             return arg.toString(true);
         }

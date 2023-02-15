@@ -23,6 +23,7 @@
 import * as theia from '@theia/plugin';
 import { Emitter, Event } from '@theia/core/lib/common/event';
 import {
+    IconUrl,
     Plugin, PLUGIN_RPC_CONTEXT,
     ScmExt,
     ScmMain, ScmRawResource, ScmRawResourceGroup,
@@ -38,17 +39,23 @@ import { RPCProtocol } from '../common/rpc-protocol';
 import { URI } from './types-impl';
 import { ScmCommandArg } from '../common/plugin-api-rpc';
 import { sep } from '@theia/core/lib/common/paths';
+import { ThemeIcon } from '@theia/monaco-editor-core/esm/vs/platform/theme/common/themeService';
+import { PluginIconPath } from './plugin-icon-path';
 type ProviderHandle = number;
 type GroupHandle = number;
 type ResourceStateHandle = number;
 
-function getIconResource(decorations?: theia.SourceControlResourceThemableDecorations): theia.Uri | undefined {
+function getIconResource(decorations?: theia.SourceControlResourceThemableDecorations): theia.Uri | ThemeIcon | undefined {
     if (!decorations) {
         return undefined;
     } else if (typeof decorations.iconPath === 'string') {
         return URI.file(decorations.iconPath);
-    } else {
+    } else if (URI.isUri(decorations.iconPath)) {
         return decorations.iconPath;
+    } else if (ThemeIcon.isThemeIcon(decorations.iconPath)) {
+        return decorations.iconPath;
+    } else {
+        return undefined;
     }
 }
 
@@ -111,8 +118,8 @@ function compareResourceThemableDecorations(a: theia.SourceControlResourceThemab
         return 1;
     }
 
-    const aPath = typeof a.iconPath === 'string' ? a.iconPath : a.iconPath.fsPath;
-    const bPath = typeof b.iconPath === 'string' ? b.iconPath : b.iconPath.fsPath;
+    const aPath = typeof a.iconPath === 'string' ? a.iconPath : URI.isUri(a.iconPath) ? a.iconPath.fsPath : (a.iconPath as theia.ThemeIcon).id;
+    const bPath = typeof b.iconPath === 'string' ? b.iconPath : URI.isUri(b.iconPath) ? b.iconPath.fsPath : (b.iconPath as theia.ThemeIcon).id;
     return comparePaths(aPath, bPath);
 }
 
@@ -415,6 +422,7 @@ class SsmResourceGroupImpl implements theia.SourceControlResourceGroup {
         private proxy: ScmMain,
         private commands: CommandRegistryImpl,
         private sourceControlHandle: number,
+        private plugin: Plugin,
         private _id: string,
         private _label: string,
     ) { }
@@ -443,10 +451,7 @@ class SsmResourceGroupImpl implements theia.SourceControlResourceGroup {
                 this.resourceStatesMap.set(handle, r);
 
                 const sourceUri = r.resourceUri;
-                const iconUri = getIconResource(r.decorations);
-                const lightIconUri = r.decorations && getIconResource(r.decorations.light) || iconUri;
-                const darkIconUri = r.decorations && getIconResource(r.decorations.dark) || iconUri;
-                const icons: UriComponents[] = [];
+                const icons = this.getIcons(r.decorations);
                 let command: Command | undefined;
 
                 if (r.command) {
@@ -457,14 +462,6 @@ class SsmResourceGroupImpl implements theia.SourceControlResourceGroup {
                     } else {
                         this.resourceStatesCommandsMap.set(handle, r.command);
                     }
-                }
-
-                if (lightIconUri) {
-                    icons.push(lightIconUri);
-                }
-
-                if (darkIconUri && (darkIconUri.toString() !== lightIconUri?.toString())) {
-                    icons.push(darkIconUri);
                 }
 
                 const tooltip = (r.decorations && r.decorations.tooltip) || '';
@@ -511,6 +508,14 @@ class SsmResourceGroupImpl implements theia.SourceControlResourceGroup {
         return rawResourceSplices;
     }
 
+    private getIcons(decorations: theia.SourceControlResourceDecorations | undefined): IconUrl | undefined {
+        const iconUri = getIconResource(decorations);
+        const lightIconUri = decorations && getIconResource(decorations.light) || iconUri;
+        const darkIconUri = decorations && getIconResource(decorations.dark) || iconUri;
+        const iconPair = { light: lightIconUri ? lightIconUri : '', dark: darkIconUri ? darkIconUri : '' };
+        return PluginIconPath.toUrl(iconUri ? iconUri : iconPair, this.plugin);
+    }
+
     dispose(): void {
         this._disposed = true;
         this.onDidDisposeEmitter.fire();
@@ -521,6 +526,8 @@ class SourceControlImpl implements theia.SourceControl {
 
     private static handlePool: number = 0;
     private groups: Map<GroupHandle, SsmResourceGroupImpl> = new Map<GroupHandle, SsmResourceGroupImpl>();
+
+    private plugin: Plugin;
 
     get id(): string {
         return this._id;
@@ -635,13 +642,14 @@ class SourceControlImpl implements theia.SourceControl {
     ) {
         this._inputBox = new ScmInputBoxImpl(plugin, this.proxy, this.handle);
         this.proxy.$registerSourceControl(this.handle, _id, _label, _rootUri);
+        this.plugin = plugin;
     }
 
     private createdResourceGroups = new Map<SsmResourceGroupImpl, Disposable>();
     private updatedResourceGroups = new Set<SsmResourceGroupImpl>();
 
     createResourceGroup(id: string, label: string): SsmResourceGroupImpl {
-        const group = new SsmResourceGroupImpl(this.proxy, this.commands, this.handle, id, label);
+        const group = new SsmResourceGroupImpl(this.proxy, this.commands, this.handle, this.plugin, id, label);
         const disposable = group.onDidDispose(() => this.createdResourceGroups.delete(group));
         this.createdResourceGroups.set(group, disposable);
         this.eventuallyAddResourceGroups();
