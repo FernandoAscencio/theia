@@ -176,7 +176,7 @@ export class GettingStartedWidget extends ReactWidget {
                 tabIndex={0}
                 onClick={this.doOpen}
                 onKeyDown={this.doOpenEnter}>
-                {nls.localizeByDefault('Open')}
+                <i className={codicon('folder-opened')}></i> {nls.localizeByDefault('Open')}
             </a>
         </div>;
 
@@ -186,7 +186,7 @@ export class GettingStartedWidget extends ReactWidget {
                 tabIndex={0}
                 onClick={this.doOpenFile}
                 onKeyDown={this.doOpenFileEnter}>
-                {nls.localizeByDefault('Open File')}
+                <i className={codicon('go-to-file')}></i> {nls.localizeByDefault('Open File')}
             </a>
         </div>;
 
@@ -196,7 +196,7 @@ export class GettingStartedWidget extends ReactWidget {
                 tabIndex={0}
                 onClick={this.doOpenFolder}
                 onKeyDown={this.doOpenFolderEnter}>
-                {nls.localizeByDefault('Open Folder')}
+                <i className={codicon('folder-opened')}></i> {nls.localizeByDefault('Open Folder')}
             </a>
         </div>;
 
@@ -206,7 +206,7 @@ export class GettingStartedWidget extends ReactWidget {
                 tabIndex={0}
                 onClick={this.doOpenWorkspace}
                 onKeyDown={this.doOpenWorkspaceEnter}>
-                {nls.localizeByDefault('Open Workspace')}
+                <i className={codicon('workspace-unknown')}></i>  {nls.localizeByDefault('Open Workspace')}
             </a>
         );
 
