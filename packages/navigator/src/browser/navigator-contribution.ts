@@ -403,6 +403,9 @@ export class FileNavigatorContribution extends AbstractViewContribution<FileNavi
             commandId: WorkspaceCommands.FILE_RENAME.id
         });
         registry.registerMenuAction(NavigatorContextMenu.MODIFICATION, {
+            commandId: 'test.file.rename'
+        });
+        registry.registerMenuAction(NavigatorContextMenu.MODIFICATION, {
             commandId: WorkspaceCommands.FILE_DELETE.id
         });
         registry.registerMenuAction(NavigatorContextMenu.MODIFICATION, {

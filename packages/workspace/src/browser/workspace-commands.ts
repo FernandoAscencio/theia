@@ -306,6 +306,14 @@ export class WorkspaceCommandContribution implements CommandContribution {
                 }
             }
         }));
+        registry.registerCommand({ id: 'test.file.rename', label: 'Test: File Rename' }, this.newMultiUriAwareCommandHandler({
+            isEnabled: uris => uris.some(uri => !this.isWorkspaceRoot(uri)) && uris.length === 1,
+            isVisible: uris => uris.some(uri => !this.isWorkspaceRoot(uri)) && uris.length === 1,
+            execute: async uris => {
+                const result: FileStat | undefined = await registry.executeCommand(WorkspaceCommands.FILE_RENAME.id, uris);
+                this.messageService.info(`Result: type="${typeof result}" uri="${result?.resource.toString()}"`);
+            }
+        }));
         registry.registerCommand(WorkspaceCommands.FILE_DUPLICATE, this.newMultiUriAwareCommandHandler(this.duplicateHandler));
         registry.registerCommand(WorkspaceCommands.FILE_DELETE, this.newMultiUriAwareCommandHandler(this.deleteHandler));
         registry.registerCommand(WorkspaceCommands.FILE_COMPARE, this.newMultiUriAwareCommandHandler(this.compareHandler));
