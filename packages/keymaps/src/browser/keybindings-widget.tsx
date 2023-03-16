@@ -211,7 +211,7 @@ export class KeybindingWidget extends ReactWidget implements StatefulWidget {
 
     protected formatAndMatchKeybinding(item: KeybindingItem, queryItems: string[]): boolean {
         if (item.keybinding) {
-            let match = false;
+            const searchTerms = [...queryItems].filter(Boolean);
             const segments = this.keybindingRegistry.resolveKeybinding(item.keybinding).reduce<RenderableStringSegment[]>((collection, code, codeIndex) => {
                 if (codeIndex !== 0) {
                     // Two non-breaking spaces.
@@ -224,14 +224,14 @@ export class KeybindingWidget extends ReactWidget implements StatefulWidget {
                     if (chunkIndex !== 0) {
                         collection.push({ value: '+', match: false, key: false });
                     }
-                    const chunkMatches = queryItems.includes(matchChunks[chunkIndex].toLocaleLowerCase());
-                    match ||= chunkMatches;
+                    const indexOfTerm = searchTerms.indexOf(matchChunks[chunkIndex].toLocaleLowerCase());
+                    const chunkMatches = indexOfTerm > -1 ? !!searchTerms.splice(indexOfTerm, 1) : false;
                     collection.push({ value: chunk, match: chunkMatches, key: true });
                 });
                 return collection;
             }, []);
             item.labels.keybinding = { value: item.labels.keybinding.value, segments };
-            return match;
+            return !searchTerms.length;
         }
         item.labels.keybinding = { value: '' };
         return false;
