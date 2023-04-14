@@ -30,6 +30,7 @@ import { MonacoResolvedKeybinding } from './monaco-resolved-keybinding';
 import { IQuickAccessController } from '@theia/monaco-editor-core/esm/vs/platform/quickinput/common/quickAccess';
 import { QuickAccessController } from '@theia/monaco-editor-core/esm/vs/platform/quickinput/browser/quickAccess';
 import { ContextKeyService as VSCodeContextKeyService } from '@theia/monaco-editor-core/esm/vs/platform/contextkey/browser/contextKeyService';
+import { IContextKey } from '@theia/monaco-editor-core/esm/vs/platform/contextkey/common/contextkey';
 import { IListOptions, List } from '@theia/monaco-editor-core/esm/vs/base/browser/ui/list/listWidget';
 import * as monaco from '@theia/monaco-editor-core';
 import { ResolvedKeybinding } from '@theia/monaco-editor-core/esm/vs/base/common/keybindings';
@@ -175,8 +176,13 @@ export class MonacoQuickInputImplementation implements IQuickInputService {
         document.body.appendChild(this.container);
     }
 
+    protected inQuickOpen: IContextKey<boolean>;
+
     private initController(): void {
         this.controller = new QuickInputController(this.getOptions());
+        this.inQuickOpen = this.contextKeyService.createKey<boolean>('inQuickOpen', false);
+        this.onShow(() => { this.inQuickOpen.set(true); });
+        this.onHide(() => { this.inQuickOpen.set(false); });
         this.updateLayout();
     }
 
