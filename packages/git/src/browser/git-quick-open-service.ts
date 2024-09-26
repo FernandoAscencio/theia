@@ -23,7 +23,7 @@ import { GitErrorHandler } from './git-error-handler';
 import { ProgressService } from '@theia/core/lib/common/progress-service';
 import URI from '@theia/core/lib/common/uri';
 import { nls } from '@theia/core/lib/common/nls';
-import { LabelProvider, QuickInputService, QuickPick, QuickPickItem } from '@theia/core/lib/browser';
+import { codiconArray, LabelProvider, QuickInputService, QuickPick, QuickPickItem } from '@theia/core/lib/browser';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
 import { FileStat } from '@theia/filesystem/lib/common/files';
 
@@ -146,7 +146,7 @@ export class GitQuickOpenService {
                     this.gitErrorHandler.handleError(error);
                 }
             };
-            const items = remotes.map(remote => new GitQuickPickItem<Remote>(remote.name, execute, remote, remote.fetch));
+            const items = remotes.map(remote => new GitQuickPickItem<Remote>(remote.name, execute, codiconArray('cloud'), remote, remote.fetch));
             this.quickInputService?.showQuickPick(items, { placeholder: nls.localize('theia/git/fetchPickRemote', 'Pick a remote to fetch from:') });
         });
     }
@@ -187,7 +187,7 @@ export class GitQuickOpenService {
                     this.gitErrorHandler.handleError(error);
                 }
             };
-            const items = remotes.map(remote => new GitQuickPickItem<Remote>(remote.name, execute, remote, remote.push));
+            const items = remotes.map(remote => new GitQuickPickItem<Remote>(remote.name, execute, codiconArray('cloud'), remote, remote.push));
             const branchName = currentBranch ? `'${currentBranch.name}' ` : '';
             this.quickInputService?.showQuickPick(items, {
                 placeholder: nls.localize('vscode.git/dist/commands/pick remote', "Pick a remote to publish the branch '{0}' to:", branchName)
@@ -224,14 +224,14 @@ export class GitQuickOpenService {
                     const branchItems = branches
                         .filter(branch => branch.type === BranchType.Remote)
                         .filter(branch => (branch.name || '').startsWith(`${remoteItem.label}/`))
-                        .map(branch => new GitQuickPickItem(branch.name, executeBranch, branch));
+                        .map(branch => new GitQuickPickItem(branch.name, executeBranch, codiconArray('cloud'), branch));
 
                     this.quickInputService?.showQuickPick(branchItems, {
                         placeholder: nls.localize('vscode.git/dist/commands/pick branch pull', 'Pick a branch to pull from')
                     });
                 }
             };
-            const remoteItems = remotes.map(remote => new GitQuickPickItem(remote.name, executeRemote, remote, remote.fetch));
+            const remoteItems = remotes.map(remote => new GitQuickPickItem(remote.name, executeRemote, codiconArray('cloud'), remote, remote.fetch));
             this.quickInputService?.showQuickPick(remoteItems, {
                 placeholder: nls.localize('vscode.git/dist/commands/pick remote pull repo', 'Pick a remote to pull the branch from')
             });
@@ -252,7 +252,7 @@ export class GitQuickOpenService {
                     this.gitErrorHandler.handleError(error);
                 }
             };
-            const items = branches.map(branch => new GitQuickPickItem<Branch>(branch.name, execute, branch));
+            const items = branches.map(branch => new GitQuickPickItem<Branch>(branch.name, execute, undefined, branch));
             const branchName = currentBranch ? `'${currentBranch.name}' ` : '';
             this.quickInputService?.showQuickPick(
                 items,
@@ -285,6 +285,7 @@ export class GitQuickOpenService {
 
             const items = branches.map(branch => new GitQuickPickItem<Branch>(
                 branch.type === BranchType.Remote ? branch.name : branch.nameWithoutRemote, switchBranch,
+                branch.type === BranchType.Remote ? codiconArray('cloud') : codiconArray('source-control'),
                 branch,
                 branch.type === BranchType.Remote
                     ? nls.localize('vscode.git/dist/commands/remote branch at', 'Remote branch at {0}', (branch.tip.sha.length > 8 ? ` ${branch.tip.sha.slice(0, 7)}` : ''))
@@ -326,7 +327,7 @@ export class GitQuickOpenService {
                 });
             };
 
-            items.unshift(new GitQuickPickItem(nls.localize('vscode.git/dist/commands/create branch', 'Create new branch...'), createBranchItem));
+            items.unshift(new GitQuickPickItem(nls.localize('vscode.git/dist/commands/create branch', 'Create new branch...'), createBranchItem, codiconArray('add')));
             this.quickInputService?.showQuickPick(items, { placeholder: nls.localize('theia/git/checkoutSelectRef', 'Select a ref to checkout or create a new local branch:') });
         });
     }
@@ -340,9 +341,9 @@ export class GitQuickOpenService {
             const execute = async (item: GitQuickPickItem<Branch | Tag>) => {
                 execFunc(item.ref!.name, currentBranch ? currentBranch.name : '');
             };
-            const branchItems = branches.map(branch => new GitQuickPickItem<Branch>(branch.name, execute, branch));
+            const branchItems = branches.map(branch => new GitQuickPickItem<Branch>(branch.name, execute, undefined, branch));
             const branchName = currentBranch ? `'${currentBranch.name}' ` : '';
-            const tagItems = tags.map(tag => new GitQuickPickItem<Tag>(tag.name, execute, tag));
+            const tagItems = tags.map(tag => new GitQuickPickItem<Tag>(tag.name, execute, undefined, tag));
 
             this.quickInputService?.showQuickPick([...branchItems, ...tagItems],
                 { placeholder: nls.localize('theia/git/compareWithBranchOrTag', 'Pick a branch or tag to compare with the currently active {0} branch:', branchName) });
@@ -365,7 +366,7 @@ export class GitQuickOpenService {
                     const items = [];
                     if (!lookFor) {
                         const label = nls.localize('theia/git/amendReuseMessag', "To reuse the last commit message, press 'Enter' or 'Escape' to cancel.");
-                        items.push(new GitQuickPickItem(label, () => resolve(lastMessage), label));
+                        items.push(new GitQuickPickItem(label, () => resolve(lastMessage), undefined, label));
                     } else {
                         items.push(new GitQuickPickItem(
                             nls.localize('theia/git/amendRewrite', "Rewrite previous commit message. Press 'Enter' to confirm or 'Escape' to cancel."),
@@ -510,7 +511,7 @@ export class GitQuickOpenService {
             const wsRoot = item.ref!.toString();
             this.doInitRepository(wsRoot);
         };
-        return new GitQuickPickItem<URI>(this.labelProvider.getName(rootUri), execute, rootUri, this.labelProvider.getLongName(rootUri.parent));
+        return new GitQuickPickItem<URI>(this.labelProvider.getName(rootUri), execute, undefined, rootUri, this.labelProvider.getLongName(rootUri.parent));
     }
 
     private getRepository(): Repository | undefined {
@@ -589,6 +590,7 @@ class GitQuickPickItem<T> implements QuickPickItem {
     constructor(
         public label: string,
         execute?: (item: QuickPickItem) => void,
+        public iconClasses?: string[],
         public readonly ref?: T,
         public description?: string,
         public alwaysShow = true,
